@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>RedNote — без сервера</title>
+  <title>RedNote</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
     body { background: #f8f8f8; color: #111; line-height: 1.5; padding: 10px; max-width: 600px; margin: 0 auto; }
@@ -28,7 +28,7 @@
 
   <header>
     <h1>🔴 RedNote</h1>
-    <div>Гость</div>
+    <div id="userStatus">Гость</div>
   </header>
 
   <main>
@@ -38,91 +38,127 @@
     </section>
 
     <section id="feed">
-      <!-- Посты будут здесь -->
+      <p id="loading">Загрузка постов...</p>
     </section>
   </main>
 
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
   <script>
-    // Упрощённое хранение в localStorage (рабочее даже в file://)
-    function getPosts() {
-      try {
-        return JSON.parse(localStorage.getItem('posts_v2') || '[]');
-      } catch (e) {
-        return [];
+    // 🔑 Ваш реальный конфиг Firebase (уже вставлен!)
+    const firebaseConfig = {
+      apiKey: "AIzaSyA4s_CNAGnOZ5SRjVrdmV1YwX2ZdCPS0NM",
+      authDomain: "rednote-ff51d.firebaseapp.com",
+      projectId: "rednote-ff51d",
+      storageBucket: "rednote-ff51d.firebasestorage.app",
+      messagingSenderId: "816401681398",
+      appId: "1:816401681398:web:0540d6b83ca2d0ebd115d7",
+      measurementId: "G-VFQLG7YF77"
+    };
+
+    // Инициализация Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // Получаем или создаём "хэш устройства" как временный идентификатор
+    function getDeviceId() {
+      let id = localStorage.getItem('deviceId');
+      if (!id) {
+        id = 'user_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('deviceId', id);
       }
+      return id;
     }
 
-    function savePosts(posts) {
-      try {
-        localStorage.setItem('posts_v2', JSON.stringify(posts));
-      } catch (e) {
-        console.warn('localStorage недоступен — посты не сохранятся после закрытия');
-      }
-    }
+    const userId = getDeviceId();
+    document.getElementById('userStatus').textContent = userId;
 
-    function timeAgo(timestamp) {
-      const diffMs = Date.now() - new Date(timestamp);
-      const diffMin = Math.floor(diffMs / 60000);
-      if (diffMin < 1) return 'только что';
-      if (diffMin < 60) return `${diffMin} мин назад`;
-      const diffHr = Math.floor(diffMin / 60);
-      if (diffHr < 24) return `${diffHr} ч назад`;
-      return `${Math.floor(diffHr / 24)} д назад`;
-    }
-
-    function render() {
-      const feed = document.getElementById('feed');
-      const posts = getPosts().reverse();
-      feed.innerHTML = posts.map(p => `
-        <article class="post">
-          <div class="post-header">
-            <div class="post-avatar"></div>
-            <span class="post-author">Вы</span>
-            <span class="post-time">${timeAgo(p.timestamp)}</span>
-          </div>
-          <div class="post-content">${p.text.replace(/\n/g, '<br>')}</div>
-          <div class="post-actions">
-            <button class="like-btn ${p.liked ? 'liked' : ''}" data-id="${p.id}">
-              ❤️ ${p.likes}
-            </button>
-            <button class="comment-btn">💬 0</button>
-          </div>
-        </article>
-      `).join('');
-
-      // Обработчики
-      document.querySelectorAll('.like-btn').forEach(btn => {
-        btn.onclick = () => {
-          const id = +btn.dataset.id;
-          const posts = getPosts();
-          const post = posts.find(p => p.id === id);
-          if (post) {
-            post.liked = !post.liked;
-            post.likes += post.liked ? 1 : -1;
-            savePosts(posts);
-            render();
-          }
-        };
+    // Сохранение поста
+    async function addPost(text) {
+      await db.collection('posts').add({
+        text,
+        userId,
+        likes: 0,
+        likedBy: [],
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
       });
     }
 
-    // Публикация
-    document.getElementById('postButton').onclick = () => {
+    // Лайк поста
+    async function toggleLike(postId, liked) {
+      const postRef = db.collection('posts').doc(postId);
+      if (liked) {
+        await postRef.update({
+          likes: firebase.firestore.FieldValue.increment(1),
+          likedBy: firebase.firestore.FieldValue.arrayUnion(userId)
+        });
+      } else {
+        await postRef.update({
+          likes: firebase.firestore.FieldValue.increment(-1),
+          likedBy: firebase.firestore.FieldValue.arrayRemove(userId)
+        });
+      }
+    }
+
+    // Чтение постов в реальном времени
+    function renderPosts() {
+      const feed = document.getElementById('feed');
+      const loading = document.getElementById('loading');
+      loading.style.display = 'block';
+
+      db.collection('posts')
+        .orderBy('timestamp', 'desc')
+        .onSnapshot(snapshot => {
+          loading.style.display = 'none';
+          const posts = [];
+          snapshot.forEach(doc => {
+            posts.push({ id: doc.id, ...doc.data() });
+          });
+
+          feed.innerHTML = posts.map(p => {
+            const time = new Date(p.timestamp?.toDate?.() || p.timestamp).toLocaleString('ru-RU', {
+              day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+            });
+
+            const liked = p.likedBy?.includes(userId);
+            return `
+              <article class="post">
+                <div class="post-header">
+                  <div class="post-avatar"></div>
+                  <span class="post-author">${p.userId || 'Гость'}</span>
+                  <span class="post-time">${time}</span>
+                </div>
+                <div class="post-content">${(p.text || '').replace(/\n/g, '<br>')}</div>
+                <div class="post-actions">
+                  <button class="like-btn ${liked ? 'liked' : ''}" data-id="${p.id}">
+                    ❤️ ${p.likes || 0}
+                  </button>
+                  <button class="comment-btn">💬 0</button>
+                </div>
+              </article>
+            `;
+          }).join('');
+
+          // Обработчики лайков
+          document.querySelectorAll('.like-btn').forEach(btn => {
+            btn.onclick = async () => {
+              const id = btn.dataset.id;
+              const liked = btn.classList.contains('liked');
+              await toggleLike(id, !liked);
+            };
+          });
+        });
+    }
+
+    // Отправка поста
+    document.getElementById('postButton').onclick = async () => {
       const input = document.getElementById('postInput');
       const text = input.value.trim();
       if (!text) return;
-
-      const posts = getPosts();
-      posts.push({
-        id: Date.now(),
-        text,
-        timestamp: new Date().toISOString(),
-        likes: 0,
-        liked: false
-      });
-      savePosts(posts);
+      await addPost(text);
       input.value = '';
-      render();
     };
 
     // Enter → отправить
@@ -133,8 +169,8 @@
       }
     };
 
-    // Первый запуск
-    render();
+    // Запуск
+    renderPosts();
   </script>
 
 </body>
