@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>RedNote</title>
   <style>
+    /* ... (все стили без изменений) — копируйте из предыдущего сообщения или оставьте как есть ... */
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
     body { background: #f8f8f8; color: #111; line-height: 1.5; padding: 10px; max-width: 600px; margin: 0 auto; }
     header { display: flex; justify-content: space-between; align-items: center; padding: 16px; background: white; border-radius: 12px; margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
@@ -26,8 +27,6 @@
       font-size: 14px; display: flex; align-items: center; gap: 4px;
     }
     .media-btn:hover { background: #ddd; }
-    
-    /* Предпросмотр фото */
     .photo-preview-container {
       position: relative;
       margin: 10px 0;
@@ -61,7 +60,6 @@
       background: #f9f9f9;
       border-radius: 6px;
     }
-
     .post { background: white; border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     .post-header { display: flex; align-items: center; margin-bottom: 10px; }
     .post-avatar { width: 36px; height: 36px; border-radius: 50%; margin-right: 10px; object-fit: cover; }
@@ -77,8 +75,6 @@
     .post-actions { display: flex; gap: 16px; margin-top: 10px; }
     .like-btn, .comment-btn { background: none; border: none; color: #555; cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 4px; }
     .like-btn.liked { color: #e02020; }
-
-    /* Модальное окно профиля */
     #profileModal {
       position: fixed;
       top: 0; left: 0; width: 100%; height: 100%;
@@ -116,15 +112,13 @@
 </head>
 <body>
 
-  <!-- Модальное окно профиля -->
   <div id="profileModal" style="display: none;">
     <div class="modal-content">
       <h2 id="modalTitle">Добро пожаловать в RedNote!</h2>
       <p id="modalSubtitle">Расскажите о себе 👇</p>
       <input type="text" id="userNameInput" placeholder="Ваше имя или ник" maxlength="16">
       <p>Выберите аватар:</p>
-      <div class="avatar-grid" id="avatarGrid">
-      </div>
+      <div class="avatar-grid" id="avatarGrid"></div>
       <button id="saveProfileBtn">Сохранить</button>
     </div>
   </div>
@@ -140,7 +134,6 @@
   <main>
     <section class="create-post">
       <textarea id="postInput" placeholder="Что нового?"></textarea>
-      
       <div class="media-buttons">
         <label class="media-btn">
           📷 <input type="file" id="photoInput" accept="image/*" style="display:none">
@@ -149,16 +142,13 @@
           🎬 <input type="file" id="videoInput" accept="video/*" style="display:none">
         </label>
       </div>
-
       <div id="photoPreviewContainer" style="display:none;" class="photo-preview-container">
         <img id="photoPreview" src="" alt="Предпросмотр фото">
         <button class="photo-remove-btn" id="removePhotoBtn">×</button>
       </div>
-
       <div id="videoHint" style="display:none;" class="video-hint">
         🎬 Видео будет загружено после публикации.
       </div>
-
       <button id="postButton">Опубликовать</button>
     </section>
 
@@ -173,7 +163,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 
   <script>
-    // 🔑 Ваш конфиг Firebase (уже вставлен!)
+    // 🔑 Ваш конфиг Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyA4s_CNAGnOZ5SRjVrdmV1YwX2ZdCPS0NM",
       authDomain: "rednote-ff51d.firebaseapp.com",
@@ -184,135 +174,107 @@
       measurementId: "G-VFQLG7YF77"
     };
 
-    // 🚀 Инициализация Firebase
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    const storage = firebase.storage();
+    // 🚀 Инициализация после загрузки DOM
+    document.addEventListener('DOMContentLoaded', async () => {
+      firebase.initializeApp(firebaseConfig);
+      const db = firebase.firestore();
+      const storage = firebase.storage();
 
-    const avatars = [
-      "https://api.dicebear.com/7.x/bottts/svg?seed=1",
-      "https://api.dicebear.com/7.x/bottts/svg?seed=2",
-      "https://api.dicebear.com/7.x/bottts/svg?seed=3",
-      "https://api.dicebear.com/7.x/bottts/svg?seed=4",
-      "https://api.dicebear.com/7.x/bottts/svg?seed=5",
-      "https://api.dicebear.com/7.x/bottts/svg?seed=6",
-      "https://api.dicebear.com/7.x/bottts/svg?seed=7",
-      "https://api.dicebear.com/7.x/bottts/svg?seed=8"
-    ];
+      const avatars = [
+        "https://api.dicebear.com/7.x/bottts/svg?seed=1",
+        "https://api.dicebear.com/7.x/bottts/svg?seed=2",
+        "https://api.dicebear.com/7.x/bottts/svg?seed=3",
+        "https://api.dicebear.com/7.x/bottts/svg?seed=4",
+        "https://api.dicebear.com/7.x/bottts/svg?seed=5",
+        "https://api.dicebear.com/7.x/bottts/svg?seed=6",
+        "https://api.dicebear.com/7.x/bottts/svg?seed=7",
+        "https://api.dicebear.com/7.x/bottts/svg?seed=8"
+      ];
 
-    // 🌐 Глобальные переменные (важно — не внутри функций!)
-    let photoFile = null;
-    let videoFile = null;
+      // 📦 Переменные — теперь внутри DOMContentLoaded
+      let photoFile = null;
+      let videoFile = null;
 
-    // 📦 Работа с профилем
-    function getProfile() {
-      const data = localStorage.getItem('userProfile');
-      return data ? JSON.parse(data) : null;
-    }
-
-    function saveProfile(name, avatarUrl) {
-      const profile = { name, avatarUrl, timestamp: Date.now() };
-      localStorage.setItem('userProfile', JSON.stringify(profile));
-      return profile;
-    }
-
-    // 📤 Загрузка файла в Firebase Storage
-    async function uploadFile(file) {
-      if (!file) return null;
-      const storageRef = storage.ref(`posts/${Date.now()}_${file.name}`);
-      const uploadTask = storageRef.put(file);
-
-      return new Promise((resolve, reject) => {
-        uploadTask.on('state_changed',
-          (snapshot) => {
-            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            console.log('Загрузка:', progress.toFixed(1) + '%');
-          },
-          (error) => {
-            console.error('❌ Ошибка загрузки:', error);
-            reject(error);
-          },
-          async () => {
-            const url = await storageRef.getDownloadURL();
-            resolve(url);
-          }
-        );
-      });
-    }
-
-    // 🖼 Открытие модального окна профиля
-    function openProfileModal(isEditing = false) {
-      const modal = document.getElementById('profileModal');
-      const title = document.getElementById('modalTitle');
-      const subtitle = document.getElementById('modalSubtitle');
-      const nameInput = document.getElementById('userNameInput');
-      const saveBtn = document.getElementById('saveProfileBtn');
-      const grid = document.getElementById('avatarGrid');
-
-      if (isEditing) {
-        title.textContent = '⚙️ Настройки профиля';
-        subtitle.textContent = 'Измените имя или аватар';
-      } else {
-        title.textContent = 'Добро пожаловать в RedNote!';
-        subtitle.textContent = 'Расскажите о себе 👇';
+      // 📦 Работа с профилем (без изменений)
+      function getProfile() {
+        const data = localStorage.getItem('userProfile');
+        return data ? JSON.parse(data) : null;
+      }
+      function saveProfile(name, avatarUrl) {
+        const profile = { name, avatarUrl, timestamp: Date.now() };
+        localStorage.setItem('userProfile', JSON.stringify(profile));
+        return profile;
       }
 
-      const profile = getProfile() || { name: '', avatarUrl: avatars[0] };
-      nameInput.value = profile.name;
+      // 📤 Загрузка файла
+      async function uploadFile(file) {
+        if (!file) return null;
+        const storageRef = storage.ref(`posts/${Date.now()}_${file.name}`);
+        const snapshot = await storageRef.put(file);
+        return await snapshot.ref.getDownloadURL();
+      }
 
-      grid.innerHTML = avatars.map((url, i) => 
-        `<div class="avatar-option ${url === profile.avatarUrl ? 'selected' : ''}" data-url="${url}">
-          <img src="${url}" alt="Аватар ${i+1}">
-        </div>`
-      ).join('');
+      // 🖼 Модальное окно (без изменений)
+      function openProfileModal(isEditing = false) {
+        const modal = document.getElementById('profileModal');
+        const title = document.getElementById('modalTitle');
+        const subtitle = document.getElementById('modalSubtitle');
+        const nameInput = document.getElementById('userNameInput');
+        const saveBtn = document.getElementById('saveProfileBtn');
+        const grid = document.getElementById('avatarGrid');
 
-      grid.querySelectorAll('.avatar-option').forEach(el => {
-        el.onclick = () => {
-          grid.querySelectorAll('.avatar-option').forEach(e => e.classList.remove('selected'));
-          el.classList.add('selected');
+        if (isEditing) {
+          title.textContent = '⚙️ Настройки профиля';
+          subtitle.textContent = 'Измените имя или аватар';
+        } else {
+          title.textContent = 'Добро пожаловать в RedNote!';
+          subtitle.textContent = 'Расскажите о себе 👇';
+        }
+
+        const profile = getProfile() || { name: '', avatarUrl: avatars[0] };
+        nameInput.value = profile.name;
+
+        grid.innerHTML = avatars.map((url, i) => 
+          `<div class="avatar-option ${url === profile.avatarUrl ? 'selected' : ''}" data-url="${url}">
+            <img src="${url}" alt="Аватар ${i+1}">
+          </div>`
+        ).join('');
+
+        grid.querySelectorAll('.avatar-option').forEach(el => {
+          el.onclick = () => {
+            grid.querySelectorAll('.avatar-option').forEach(e => e.classList.remove('selected'));
+            el.classList.add('selected');
+          };
+        });
+
+        saveBtn.onclick = () => {
+          const name = nameInput.value.trim() || 'Аноним';
+          const selected = grid.querySelector('.avatar-option.selected');
+          const avatarUrl = selected ? selected.dataset.url : avatars[0];
+          const newProfile = saveProfile(name, avatarUrl);
+          updateUI(newProfile);
+          modal.style.display = 'none';
         };
-      });
 
-      saveBtn.onclick = () => {
-        const name = nameInput.value.trim() || 'Аноним';
-        const selected = grid.querySelector('.avatar-option.selected');
-        const avatarUrl = selected ? selected.dataset.url : avatars[0];
-        const newProfile = saveProfile(name, avatarUrl);
-        updateUI(newProfile);
-        modal.style.display = 'none';
-      };
-
-      modal.style.display = 'flex';
-    }
-
-    // 🎨 Обновление UI после изменения профиля
-    function updateUI(profile) {
-      const userStatus = document.getElementById('userStatus');
-      userStatus.innerHTML = `<img src="${profile.avatarUrl}" width="28" height="28" style="border-radius:50%;"> <span>${profile.name}</span>`;
-    }
-
-    // 🚀 Основная инициализация
-    async function initApp() {
-      const profile = getProfile();
-      if (!profile) {
-        openProfileModal(false);
-      } else {
-        updateUI(profile);
+        modal.style.display = 'flex';
       }
 
-      // ⚙️ Кнопка настроек
-      document.getElementById('settingsBtn').onclick = () => {
-        openProfileModal(true);
-      };
+      function updateUI(profile) {
+        document.getElementById('userStatus').innerHTML = 
+          `<img src="${profile.avatarUrl}" width="28" height="28" style="border-radius:50%;"> <span>${profile.name}</span>`;
+      }
 
-      // 📷 Предпросмотр фото
+      // ✅ Главное: привязка элементов ПОСЛЕ загрузки DOM
       const photoInput = document.getElementById('photoInput');
       const videoInput = document.getElementById('videoInput');
       const photoPreviewContainer = document.getElementById('photoPreviewContainer');
       const photoPreview = document.getElementById('photoPreview');
       const removePhotoBtn = document.getElementById('removePhotoBtn');
       const videoHint = document.getElementById('videoHint');
+      const postInput = document.getElementById('postInput');
+      const postButton = document.getElementById('postButton');
 
+      // 📷 Предпросмотр фото
       photoInput.onchange = (e) => {
         const file = e.target.files[0];
         if (file && file.type.startsWith('image/')) {
@@ -325,7 +287,7 @@
           };
           reader.readAsDataURL(file);
         } else {
-          alert('Пожалуйста, выберите изображение (JPG, PNG, GIF)');
+          alert('Пожалуйста, выберите изображение');
           photoInput.value = '';
         }
       };
@@ -337,7 +299,7 @@
           videoHint.style.display = 'block';
           photoPreviewContainer.style.display = 'none';
         } else {
-          alert('Пожалуйста, выберите видео (MP4, WEBM)');
+          alert('Пожалуйста, выберите видео');
           videoInput.value = '';
         }
       };
@@ -348,20 +310,25 @@
         photoPreviewContainer.style.display = 'none';
       };
 
-      // ✉️ Публикация поста
-      async function addPost(text) {
+      // ✉️ Публикация
+      async function addPost() {
+        const text = postInput.value.trim();
+        if (!text && !photoFile && !videoFile) {
+          alert('Напишите текст или добавьте фото/видео');
+          return;
+        }
+
         const p = getProfile() || { name: 'Аноним', avatarUrl: avatars[0] };
         let photoUrl = null, videoUrl = null;
 
         try {
           if (photoFile) {
-            console.log("🚀 Загружаем фото:", photoFile.name, `(${Math.round(photoFile.size / 1024)} КБ)`);
+            console.log("🚀 Загружаем фото...");
             photoUrl = await uploadFile(photoFile);
             console.log("✅ Фото загружено");
           }
-
           if (videoFile) {
-            console.log("🎬 Загружаем видео:", videoFile.name, `(${Math.round(videoFile.size / 1024)} КБ)`);
+            console.log("🎬 Загружаем видео...");
             videoUrl = await uploadFile(videoFile);
             console.log("✅ Видео загружено");
           }
@@ -376,50 +343,42 @@
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
           });
 
-          console.log("✅ Пост опубликован");
+          // 🧹 Очистка
+          photoFile = null;
+          videoFile = null;
+          photoInput.value = '';
+          videoInput.value = '';
+          photoPreviewContainer.style.display = 'none';
+          videoHint.style.display = 'none';
+          postInput.value = '';
 
+          console.log("✅ Пост опубликован");
         } catch (err) {
           console.error("❌ Ошибка:", err);
-          alert("Не удалось опубликовать. Откройте F12 → Console для деталей.");
-          return;
+          alert("Ошибка: " + (err.message || "неизвестная"));
         }
-
-        // 🧹 Очистка
-        photoFile = null;
-        videoFile = null;
-        photoInput.value = '';
-        videoInput.value = '';
-        photoPreviewContainer.style.display = 'none';
-        videoHint.style.display = 'none';
-        document.getElementById('postInput').value = '';
       }
 
-      // ❤️ Лайки
+      // ❤️ Лайки и рендер (без изменений)
       async function toggleLike(postId, liked) {
         const p = getProfile() || { name: 'temp' };
         const postRef = db.collection('posts').doc(postId);
-        if (liked) {
-          await postRef.update({
-            likes: firebase.firestore.FieldValue.increment(1),
-            likedBy: firebase.firestore.FieldValue.arrayUnion(p.name)
-          });
-        } else {
-          await postRef.update({
-            likes: firebase.firestore.FieldValue.increment(-1),
-            likedBy: firebase.firestore.FieldValue.arrayRemove(p.name)
-          });
-        }
+        await postRef.update({
+          likes: firebase.firestore.FieldValue.increment(liked ? 1 : -1),
+          likedBy: liked 
+            ? firebase.firestore.FieldValue.arrayUnion(p.name)
+            : firebase.firestore.FieldValue.arrayRemove(p.name)
+        });
       }
 
-      // 📰 Рендер ленты
       function renderPosts() {
         const feed = document.getElementById('feed');
-        const loading = document.getElementById('loading');
+        feed.innerHTML = '<p id="loading">Загрузка постов...</p>';
 
         db.collection('posts')
           .orderBy('timestamp', 'desc')
           .onSnapshot(snapshot => {
-            loading.style.display = 'none';
+            document.getElementById('loading').style.display = 'none';
             const posts = [];
             snapshot.forEach(doc => posts.push({ id: doc.id, ...doc.data() }));
 
@@ -434,12 +393,8 @@
               const author = p.userId || 'Гость';
 
               let mediaHtml = '';
-              if (p.media?.photo) {
-                mediaHtml += `<img src="${p.media.photo}" alt="Фото">`;
-              }
-              if (p.media?.video) {
-                mediaHtml += `<video controls><source src="${p.media.video}" type="video/mp4">Ваш браузер не поддерживает видео.</video>`;
-              }
+              if (p.media?.photo) mediaHtml += `<img src="${p.media.photo}" alt="Фото">`;
+              if (p.media?.video) mediaHtml += `<video controls><source src="${p.media.video}" type="video/mp4"></video>`;
 
               return `
                 <article class="post">
@@ -470,20 +425,25 @@
           });
       }
 
-      // 🎯 Привязка событий
-      document.getElementById('postButton').onclick = () => addPost(document.getElementById('postInput').value.trim());
-      document.getElementById('postInput').onkeydown = (e) => {
+      // 🔗 Привязка событий
+      postButton.onclick = addPost;
+      postInput.onkeydown = (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault();
-          document.getElementById('postButton').click();
+          addPost();
         }
       };
+      document.getElementById('settingsBtn').onclick = () => openProfileModal(true);
 
-      renderPosts();
-    }
-
-    // 🏁 Запуск!
-    window.addEventListener('load', initApp);
+      // 🏁 Запуск
+      const profile = getProfile();
+      if (!profile) {
+        openProfileModal(false);
+      } else {
+        updateUI(profile);
+        renderPosts();
+      }
+    });
   </script>
 
 </body>
