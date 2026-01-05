@@ -26,6 +26,42 @@
       font-size: 14px; display: flex; align-items: center; gap: 4px;
     }
     .media-btn:hover { background: #ddd; }
+    
+    /* Предпросмотр фото */
+    .photo-preview-container {
+      position: relative;
+      margin: 10px 0;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .photo-preview-container img {
+      width: 100%;
+      max-height: 300px;
+      object-fit: cover;
+      display: block;
+    }
+    .photo-remove-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: rgba(0,0,0,0.6);
+      color: white;
+      border: none;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    .video-hint {
+      margin-top: 8px;
+      font-size: 14px;
+      color: #666;
+      padding: 8px;
+      background: #f9f9f9;
+      border-radius: 6px;
+    }
+
     .post { background: white; border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     .post-header { display: flex; align-items: center; margin-bottom: 10px; }
     .post-avatar { width: 36px; height: 36px; border-radius: 50%; margin-right: 10px; object-fit: cover; }
@@ -105,6 +141,7 @@
   <main>
     <section class="create-post">
       <textarea id="postInput" placeholder="Что нового?"></textarea>
+      
       <div class="media-buttons">
         <label class="media-btn">
           📷 <input type="file" id="photoInput" accept="image/*" style="display:none">
@@ -113,6 +150,18 @@
           🎬 <input type="file" id="videoInput" accept="video/*" style="display:none">
         </label>
       </div>
+
+      <!-- Предпросмотр фото -->
+      <div id="photoPreviewContainer" style="display:none;" class="photo-preview-container">
+        <img id="photoPreview" src="" alt="Предпросмотр фото">
+        <button class="photo-remove-btn" id="removePhotoBtn">×</button>
+      </div>
+
+      <!-- Подсказка для видео -->
+      <div id="videoHint" style="display:none;" class="video-hint">
+        🎬 Видео будет загружено после публикации.
+      </div>
+
       <button id="postButton">Опубликовать</button>
     </section>
 
@@ -166,11 +215,9 @@
 
     async function uploadFile(file) {
       if (!file) return null;
-
       const storageRef = storage.ref(`posts/${Date.now()}_${file.name}`);
       await storageRef.put(file);
-      const url = await storageRef.getDownloadURL();
-      return url;
+      return await storageRef.getDownloadURL();
     }
 
     // Функция открытия окна профиля
@@ -241,44 +288,80 @@
         openProfileModal(true);
       };
 
-      // --- Загрузка фото и видео ---
-      let photoUrl = null;
-      let videoUrl = null;
+      // --- Предпросмотр фото ---
+      const photoInput = document.getElementById('photoInput');
+      const videoInput = document.getElementById('videoInput');
+      const photoPreviewContainer = document.getElementById('photoPreviewContainer');
+      const photoPreview = document.getElementById('photoPreview');
+      const removePhotoBtn = document.getElementById('removePhotoBtn');
+      const videoHint = document.getElementById('videoHint');
 
-      document.getElementById('photoInput').onchange = async (e) => {
+      let photoFile = null;
+      let videoFile = null;
+
+      photoInput.onchange = (e) => {
         const file = e.target.files[0];
         if (file) {
-          photoUrl = await uploadFile(file);
-          alert('Фото загружено!');
+          photoFile = file;
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            photoPreview.src = event.target.result;
+            photoPreviewContainer.style.display = 'block';
+            videoHint.style.display = 'none';
+          };
+          reader.readAsDataURL(file);
         }
       };
 
-      document.getElementById('videoInput').onchange = async (e) => {
+      videoInput.onchange = (e) => {
         const file = e.target.files[0];
         if (file) {
-          videoUrl = await uploadFile(file);
-          alert('Видео загружено!');
+          videoFile = file;
+          videoHint.style.display = 'block';
+          photoPreviewContainer.style.display = 'none';
         }
+      };
+
+      removePhotoBtn.onclick = () => {
+        photoFile = null;
+        photoInput.value = '';
+        photoPreviewContainer.style.display = 'none';
       };
 
       // --- Работа с постами ---
       async function addPost(text) {
         const p = getProfile() || { name: 'Аноним', avatarUrl: avatars[0] };
+
+        let photoUrl = null;
+        let videoUrl = null;
+
+        if (photoFile) {
+          photoUrl = await uploadFile(photoFile);
+        }
+        if (videoFile) {
+          videoUrl = await uploadFile(videoFile);
+        }
+
         await db.collection('posts').add({
           text,
           userId: p.name,
           userAvatar: p.avatarUrl,
           media: {
-            photo: photoUrl || null,
-            video: videoUrl || null
+            photo: photoUrl,
+            video: videoUrl
           },
           likes: 0,
           likedBy: [],
           timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
-        // Сбросить медиа после публикации
-        photoUrl = null;
-        videoUrl = null;
+
+        // Очистка после публикации
+        photoFile = null;
+        videoFile = null;
+        photoInput.value = '';
+        videoInput.value = '';
+        photoPreviewContainer.style.display = 'none';
+        videoHint.style.display = 'none';
       }
 
       async function toggleLike(postId, liked) {
@@ -361,7 +444,7 @@
       document.getElementById('postButton').onclick = async () => {
         const input = document.getElementById('postInput');
         const text = input.value.trim();
-        if (!text && !photoUrl && !videoUrl) return;
+        if (!text && !photoFile && !videoFile) return;
         await addPost(text);
         input.value = '';
       };
