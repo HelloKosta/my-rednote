@@ -15,20 +15,69 @@
     button:hover { background: #c01515; }
     .post { background: white; border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     .post-header { display: flex; align-items: center; margin-bottom: 10px; }
-    .post-avatar { width: 32px; height: 32px; border-radius: 50%; background: #eee; margin-right: 10px; }
+    .post-avatar { width: 36px; height: 36px; border-radius: 50%; margin-right: 10px; object-fit: cover; }
     .post-author { font-weight: bold; }
     .post-time { color: #888; font-size: 13px; margin-left: 8px; }
     .post-content { margin: 10px 0; white-space: pre-wrap; }
     .post-actions { display: flex; gap: 16px; margin-top: 10px; }
     .like-btn, .comment-btn { background: none; border: none; color: #555; cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 4px; }
     .like-btn.liked { color: #e02020; }
+
+    /* Модальное окно профиля */
+    #profileModal {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .modal-content {
+      background: white;
+      padding: 24px;
+      border-radius: 16px;
+      width: 90%;
+      max-width: 400px;
+      text-align: center;
+    }
+    .modal-content h2 { margin-bottom: 16px; color: #e02020; }
+    input { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; }
+    .avatar-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin: 16px 0;
+    }
+    .avatar-option {
+      width: 50px; height: 50px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+    }
+    .avatar-option.selected { border-color: #e02020; }
+    .avatar-option img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
   </style>
 </head>
 <body>
 
+  <!-- Модальное окно профиля -->
+  <div id="profileModal" style="display: none;">
+    <div class="modal-content">
+      <h2>Добро пожаловать в RedNote!</h2>
+      <p>Расскажите о себе 👇</p>
+      <input type="text" id="userNameInput" placeholder="Ваше имя или ник" maxlength="16">
+      <p>Выберите аватар:</p>
+      <div class="avatar-grid" id="avatarGrid">
+        <!-- Аватарки будут сгенерированы JS -->
+      </div>
+      <button id="saveProfileBtn">Сохранить</button>
+    </div>
+  </div>
+
   <header>
     <h1>🔴 RedNote</h1>
-    <div id="userStatus">Гость</div>
+    <div id="userStatus">Загрузка...</div>
   </header>
 
   <main>
@@ -47,7 +96,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
   <script>
-    // 🔑 Ваш реальный конфиг Firebase (уже вставлен!)
+    // 🔑 Ваш конфиг Firebase (уже настроен!)
     const firebaseConfig = {
       apiKey: "AIzaSyA4s_CNAGnOZ5SRjVrdmV1YwX2ZdCPS0NM",
       authDomain: "rednote-ff51d.firebaseapp.com",
@@ -58,119 +107,178 @@
       measurementId: "G-VFQLG7YF77"
     };
 
-    // Инициализация Firebase
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // Получаем или создаём "хэш устройства" как временный идентификатор
-    function getDeviceId() {
-      let id = localStorage.getItem('deviceId');
-      if (!id) {
-        id = 'user_' + Math.random().toString(36).substr(2, 9);
-        localStorage.setItem('deviceId', id);
-      }
-      return id;
+    // Готовые аватарки (можно заменить на свои)
+    const avatars = [
+      "https://api.dicebear.com/7.x/bottts/svg?seed=1",
+      "https://api.dicebear.com/7.x/bottts/svg?seed=2",
+      "https://api.dicebear.com/7.x/bottts/svg?seed=3",
+      "https://api.dicebear.com/7.x/bottts/svg?seed=4",
+      "https://api.dicebear.com/7.x/bottts/svg?seed=5",
+      "https://api.dicebear.com/7.x/bottts/svg?seed=6",
+      "https://api.dicebear.com/7.x/bottts/svg?seed=7",
+      "https://api.dicebear.com/7.x/bottts/svg?seed=8"
+    ];
+
+    // Получаем профиль из localStorage
+    function getProfile() {
+      const data = localStorage.getItem('userProfile');
+      return data ? JSON.parse(data) : null;
     }
 
-    const userId = getDeviceId();
-    document.getElementById('userStatus').textContent = userId;
+    // Сохраняем профиль
+    function saveProfile(name, avatarUrl) {
+      const profile = { name, avatarUrl, timestamp: Date.now() };
+      localStorage.setItem('userProfile', JSON.stringify(profile));
+      return profile;
+    }
 
-    // Сохранение поста
-    async function addPost(text) {
-      await db.collection('posts').add({
-        text,
-        userId,
-        likes: 0,
-        likedBy: [],
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    // Показать модальное окно
+    function showProfileModal() {
+      const modal = document.getElementById('profileModal');
+      const grid = document.getElementById('avatarGrid');
+      
+      // Генерируем аватарки
+      grid.innerHTML = avatars.map((url, i) => 
+        `<div class="avatar-option" data-url="${url}">
+          <img src="${url}" alt="Аватар ${i+1}">
+        </div>`
+      ).join('');
+
+      // Обработчик выбора аватара
+      grid.querySelectorAll('.avatar-option').forEach(el => {
+        el.onclick = () => {
+          grid.querySelectorAll('.avatar-option').forEach(e => e.classList.remove('selected'));
+          el.classList.add('selected');
+        };
       });
+
+      // Сохранение профиля
+      document.getElementById('saveProfileBtn').onclick = () => {
+        const name = document.getElementById('userNameInput').value.trim() || 'Аноним';
+        const selected = grid.querySelector('.avatar-option.selected');
+        const avatarUrl = selected ? selected.dataset.url : avatars[0];
+        
+        saveProfile(name, avatarUrl);
+        modal.style.display = 'none';
+        initApp(); // Перезапуск с новым профилем
+      };
+
+      modal.style.display = 'flex';
     }
 
-    // Лайк поста
-    async function toggleLike(postId, liked) {
-      const postRef = db.collection('posts').doc(postId);
-      if (liked) {
-        await postRef.update({
-          likes: firebase.firestore.FieldValue.increment(1),
-          likedBy: firebase.firestore.FieldValue.arrayUnion(userId)
-        });
-      } else {
-        await postRef.update({
-          likes: firebase.firestore.FieldValue.increment(-1),
-          likedBy: firebase.firestore.FieldValue.arrayRemove(userId)
+    // Инициализация приложения
+    async function initApp() {
+      const profile = getProfile();
+      const userStatus = document.getElementById('userStatus');
+
+      if (!profile) {
+        showProfileModal();
+        return;
+      }
+
+      userStatus.innerHTML = `<img src="${profile.avatarUrl}" width="24" height="24" style="border-radius:50%; margin-right:6px; vertical-align:middle;"> ${profile.name}`;
+
+      // --- Остальной код (работа с постами) ---
+      async function addPost(text) {
+        await db.collection('posts').add({
+          text,
+          userId: profile.name,
+          userAvatar: profile.avatarUrl,
+          likes: 0,
+          likedBy: [],
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
       }
-    }
 
-    // Чтение постов в реальном времени
-    function renderPosts() {
-      const feed = document.getElementById('feed');
-      const loading = document.getElementById('loading');
-      loading.style.display = 'block';
-
-      db.collection('posts')
-        .orderBy('timestamp', 'desc')
-        .onSnapshot(snapshot => {
-          loading.style.display = 'none';
-          const posts = [];
-          snapshot.forEach(doc => {
-            posts.push({ id: doc.id, ...doc.data() });
+      async function toggleLike(postId, liked) {
+        const postRef = db.collection('posts').doc(postId);
+        if (liked) {
+          await postRef.update({
+            likes: firebase.firestore.FieldValue.increment(1),
+            likedBy: firebase.firestore.FieldValue.arrayUnion(profile.name)
           });
+        } else {
+          await postRef.update({
+            likes: firebase.firestore.FieldValue.increment(-1),
+            likedBy: firebase.firestore.FieldValue.arrayRemove(profile.name)
+          });
+        }
+      }
 
-          feed.innerHTML = posts.map(p => {
-            const time = new Date(p.timestamp?.toDate?.() || p.timestamp).toLocaleString('ru-RU', {
-              day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+      function renderPosts() {
+        const feed = document.getElementById('feed');
+        const loading = document.getElementById('loading');
+        loading.style.display = 'block';
+
+        db.collection('posts')
+          .orderBy('timestamp', 'desc')
+          .onSnapshot(snapshot => {
+            loading.style.display = 'none';
+            const posts = [];
+            snapshot.forEach(doc => {
+              posts.push({ id: doc.id, ...doc.data() });
             });
 
-            const liked = p.likedBy?.includes(userId);
-            return `
-              <article class="post">
-                <div class="post-header">
-                  <div class="post-avatar"></div>
-                  <span class="post-author">${p.userId || 'Гость'}</span>
-                  <span class="post-time">${time}</span>
-                </div>
-                <div class="post-content">${(p.text || '').replace(/\n/g, '<br>')}</div>
-                <div class="post-actions">
-                  <button class="like-btn ${liked ? 'liked' : ''}" data-id="${p.id}">
-                    ❤️ ${p.likes || 0}
-                  </button>
-                  <button class="comment-btn">💬 0</button>
-                </div>
-              </article>
-            `;
-          }).join('');
+            feed.innerHTML = posts.map(p => {
+              const time = new Date(p.timestamp?.toDate?.() || p.timestamp).toLocaleString('ru-RU', {
+                day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+              });
 
-          // Обработчики лайков
-          document.querySelectorAll('.like-btn').forEach(btn => {
-            btn.onclick = async () => {
-              const id = btn.dataset.id;
-              const liked = btn.classList.contains('liked');
-              await toggleLike(id, !liked);
-            };
+              const liked = p.likedBy?.includes(profile.name);
+              const avatar = p.userAvatar || avatars[0];
+              const author = p.userId || 'Гость';
+
+              return `
+                <article class="post">
+                  <div class="post-header">
+                    <img src="${avatar}" class="post-avatar" alt="">
+                    <span class="post-author">${author}</span>
+                    <span class="post-time">${time}</span>
+                  </div>
+                  <div class="post-content">${(p.text || '').replace(/\n/g, '<br>')}</div>
+                  <div class="post-actions">
+                    <button class="like-btn ${liked ? 'liked' : ''}" data-id="${p.id}">
+                      ❤️ ${p.likes || 0}
+                    </button>
+                    <button class="comment-btn">💬 0</button>
+                  </div>
+                </article>
+              `;
+            }).join('');
+
+            document.querySelectorAll('.like-btn').forEach(btn => {
+              btn.onclick = async () => {
+                const id = btn.dataset.id;
+                const liked = btn.classList.contains('liked');
+                await toggleLike(id, !liked);
+              };
+            });
           });
-        });
+      }
+
+      document.getElementById('postButton').onclick = async () => {
+        const input = document.getElementById('postInput');
+        const text = input.value.trim();
+        if (!text) return;
+        await addPost(text);
+        input.value = '';
+      };
+
+      document.getElementById('postInput').onkeydown = (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          document.getElementById('postButton').click();
+        }
+      };
+
+      renderPosts();
     }
 
-    // Отправка поста
-    document.getElementById('postButton').onclick = async () => {
-      const input = document.getElementById('postInput');
-      const text = input.value.trim();
-      if (!text) return;
-      await addPost(text);
-      input.value = '';
-    };
-
-    // Enter → отправить
-    document.getElementById('postInput').onkeydown = (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        document.getElementById('postButton').click();
-      }
-    };
-
     // Запуск
-    renderPosts();
+    initApp();
   </script>
 
 </body>
