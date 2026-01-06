@@ -4,187 +4,55 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>RedNote</title>
-  <!-- Подключаем Supabase -->
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
     body { background: #f8f8f8; color: #111; line-height: 1.5; padding: 10px; max-width: 600px; margin: 0 auto; }
-    
-    header { 
-      display: flex; justify-content: space-between; align-items: center; 
-      padding: 16px; background: white; border-radius: 12px; 
-      margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); 
-    }
+    header { display: flex; justify-content: space-between; align-items: center; padding: 16px; background: white; border-radius: 12px; margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     header h1 { font-size: 24px; color: #e02020; }
-    
     .user-info { display: flex; align-items: center; gap: 8px; }
     .user-info img { width: 28px; height: 28px; border-radius: 50%; }
-    
-    .settings-btn {
-      background: none; border: none; font-size: 20px; cursor: pointer;
-      color: #888; padding: 4px 8px; border-radius: 6px;
-    }
+    .settings-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: #888; padding: 4px 8px; border-radius: 6px; }
     .settings-btn:hover { background: #f0f0f0; color: #333; }
-    
-    .create-post { 
-      background: white; padding: 16px; border-radius: 12px; 
-      margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); 
-    }
-    
-    textarea { 
-      width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; 
-      font-size: 16px; margin-bottom: 10px; resize: vertical; min-height: 60px; 
-    }
-    
-    button { 
-      background: #e02020; color: white; border: none; 
-      padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; 
-    }
+    .create-post { background: white; padding: 16px; border-radius: 12px; margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; margin-bottom: 10px; resize: vertical; min-height: 60px; }
+    button { background: #e02020; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
     button:hover { background: #c01515; }
-    
     .media-buttons { display: flex; gap: 8px; margin-top: 8px; }
-    .media-btn {
-      background: #eee; color: #333; padding: 6px 12px; border-radius: 6px; 
-      cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 4px;
-    }
+    .media-btn { background: #eee; color: #333; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 4px; }
     .media-btn:hover { background: #ddd; }
-    
-    .photo-preview-container {
-      position: relative;
-      margin: 10px 0;
-      border-radius: 8px;
-      overflow: hidden;
-    }
-    .photo-preview-container img {
-      width: 100%;
-      max-height: 300px;
-      object-fit: cover;
-      display: block;
-    }
-    
-    .photo-remove-btn {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      background: rgba(0,0,0,0.6);
-      color: white;
-      border: none;
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      cursor: pointer;
-      font-size: 16px;
-    }
-    
-    .video-hint {
-      margin-top: 8px;
-      font-size: 14px;
-      color: #666;
-      padding: 8px;
-      background: #f9f9f9;
-      border-radius: 6px;
-    }
-    
-    .post { 
-      background: white; border-radius: 12px; padding: 16px; 
-      margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); 
-    }
-    
+    .photo-preview-container { position: relative; margin: 10px 0; border-radius: 8px; overflow: hidden; }
+    .photo-preview-container img { width: 100%; max-height: 300px; object-fit: cover; display: block; }
+    .photo-remove-btn { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.6); color: white; border: none; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; font-size: 16px; }
+    .video-hint { margin-top: 8px; font-size: 14px; color: #666; padding: 8px; background: #f9f9f9; border-radius: 6px; }
+    .post { background: white; border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     .post-header { display: flex; align-items: center; margin-bottom: 10px; }
     .post-avatar { width: 36px; height: 36px; border-radius: 50%; margin-right: 10px; object-fit: cover; }
     .post-author { font-weight: bold; }
     .post-time { color: #888; font-size: 13px; margin-left: 8px; }
     .post-content { margin: 10px 0; white-space: pre-wrap; }
     .post-media { margin: 10px 0; }
-    .post-media img, .post-media video {
-      max-width: 100%;
-      border-radius: 8px;
-      margin-top: 8px;
-    }
-    
+    .post-media img, .post-media video { max-width: 100%; border-radius: 8px; margin-top: 8px; }
     .post-actions { display: flex; gap: 16px; margin-top: 10px; }
-    .like-btn, .comment-btn { 
-      background: none; border: none; color: #555; cursor: pointer; 
-      font-size: 14px; display: flex; align-items: center; gap: 4px; 
-    }
+    .like-btn, .comment-btn { background: none; border: none; color: #555; cursor: pointer; font-size: 14px; display: flex; align-items: center; gap: 4px; }
     .like-btn.liked { color: #e02020; }
-    
-    #profileModal {
-      position: fixed;
-      top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.6);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-    }
-    
-    .modal-content {
-      background: white;
-      padding: 24px;
-      border-radius: 16px;
-      width: 90%;
-      max-width: 400px;
-      text-align: center;
-    }
-    
+    #profileModal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+    .modal-content { background: white; padding: 24px; border-radius: 16px; width: 90%; max-width: 400px; text-align: center; }
     .modal-content h2 { margin-bottom: 16px; color: #e02020; }
-    input { 
-      width: 100%; padding: 10px; margin: 8px 0; 
-      border: 1px solid #ddd; border-radius: 8px; font-size: 16px; 
-    }
-    
-    .avatar-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
-      margin: 16px 0;
-    }
-    
-    .avatar-option {
-      width: 50px; height: 50px;
-      border-radius: 50%;
-      cursor: pointer;
-      border: 2px solid transparent;
-    }
+    input { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; }
+    .avatar-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 16px 0; }
+    .avatar-option { width: 50px; height: 50px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
     .avatar-option.selected { border-color: #e02020; }
     .avatar-option img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
-    
-    .loading {
-      text-align: center;
-      padding: 20px;
-      color: #666;
-    }
-    
-    .upload-progress {
-      margin-top: 10px;
-      display: none;
-    }
-    
-    .progress-bar {
-      background: #eee;
-      height: 4px;
-      border-radius: 2px;
-      overflow: hidden;
-    }
-    
-    .progress-fill {
-      background: #e02020;
-      height: 100%;
-      width: 0%;
-      transition: width 0.3s;
-    }
-    
-    .progress-text {
-      font-size: 12px;
-      color: #666;
-      margin-top: 4px;
-    }
+    .loading { text-align: center; padding: 20px; color: #666; }
+    .upload-progress { margin-top: 10px; display: none; }
+    .progress-bar { background: #eee; height: 4px; border-radius: 2px; overflow: hidden; }
+    .progress-fill { background: #e02020; height: 100%; width: 0%; transition: width 0.3s; }
+    .progress-text { font-size: 12px; color: #666; margin-top: 4px; }
   </style>
 </head>
 <body>
 
-  <!-- Модальное окно профиля -->
   <div id="profileModal" style="display: none;">
     <div class="modal-content">
       <h2 id="modalTitle">Добро пожаловать в RedNote!</h2>
@@ -196,7 +64,6 @@
     </div>
   </div>
 
-  <!-- Шапка -->
   <header>
     <h1>🔴 RedNote</h1>
     <div class="user-info">
@@ -206,60 +73,39 @@
   </header>
 
   <main>
-    <!-- Форма создания поста -->
     <section class="create-post">
       <textarea id="postInput" placeholder="Что нового?"></textarea>
       <div class="media-buttons">
-        <label class="media-btn">
-          📷 <input type="file" id="photoInput" accept="image/*" style="display:none">
-        </label>
-        <label class="media-btn">
-          🎬 <input type="file" id="videoInput" accept="video/*" style="display:none">
-        </label>
+        <label class="media-btn">📷 <input type="file" id="photoInput" accept="image/*" style="display:none"></label>
+        <label class="media-btn">🎬 <input type="file" id="videoInput" accept="video/*" style="display:none"></label>
       </div>
-      
-      <!-- Предпросмотр фото -->
       <div id="photoPreviewContainer" style="display:none;" class="photo-preview-container">
         <img id="photoPreview" src="" alt="Предпросмотр фото">
         <button class="photo-remove-btn" id="removePhotoBtn">×</button>
       </div>
-      
-      <!-- Подсказка для видео -->
-      <div id="videoHint" style="display:none;" class="video-hint">
-        🎬 Видео будет загружено после публикации.
-      </div>
-      
-      <!-- Индикатор загрузки -->
+      <div id="videoHint" style="display:none;" class="video-hint">🎬 Видео будет загружено после публикации.</div>
       <div id="uploadProgress" class="upload-progress">
-        <div class="progress-bar">
-          <div id="progressFill" class="progress-fill"></div>
-        </div>
+        <div class="progress-bar"><div id="progressFill" class="progress-fill"></div></div>
         <p id="progressText" class="progress-text">Загрузка: 0%</p>
       </div>
-      
       <button id="postButton">Опубликовать</button>
     </section>
 
-    <!-- Лента постов -->
-    <section id="feed">
-      <p class="loading">Загрузка постов...</p>
-    </section>
+    <section id="feed"><p class="loading">Загрузка постов...</p></section>
   </main>
 
   <script>
     // ==================== КОНФИГУРАЦИЯ ====================
     // 🔑 ЗАМЕНИТЕ ЭТИ ЗНАЧЕНИЯ НА ВАШИ!
     const SUPABASE_URL = 'https://oenxpnkoqwpzh1rewcqc.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'; // ВСТАВЬТЕ ВАШ КЛЮЧ ЗДЕСЬ!
+    const SUPABASE_ANON_KEY = 'sb_publishable_B_9Ydvs28XP_sxQaZuhRoQ_FeFUeEPX'; // ← ВСТАВЬТЕ КЛЮЧ ЗДЕСЬ!
     
-    // 🚀 Инициализация Supabase
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
     // ==================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ====================
     let photoFile = null;
     let videoFile = null;
     
-    // Аватары по умолчанию
     const avatars = [
       "https://api.dicebear.com/7.x/bottts/svg?seed=1",
       "https://api.dicebear.com/7.x/bottts/svg?seed=2",
@@ -293,38 +139,29 @@
       if (!file) return null;
       
       try {
-        // Показываем индикатор загрузки
         showUploadProgress(0, "Начинаем загрузку...");
         
-        // Проверяем размер файла
-        const MAX_SIZE = file.type.startsWith('image/') ? 5 * 1024 * 1024 : 50 * 1024 * 1024; // 5MB для фото, 50MB для видео
+        const MAX_SIZE = file.type.startsWith('image/') ? 5 * 1024 * 1024 : 50 * 1024 * 1024;
         if (file.size > MAX_SIZE) {
           throw new Error(`Файл слишком большой. Максимум: ${MAX_SIZE/1024/1024}MB`);
         }
         
-        // Генерируем уникальное имя
         const fileExt = file.name.split('.').pop();
         const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
         const filePath = `posts/${fileName}`;
         
-        console.log("📤 Загружаем файл:", fileName);
-        
-        // Загружаем файл в Supabase Storage
         const { data, error } = await supabase.storage
           .from('media')
           .upload(filePath, file);
         
         if (error) throw error;
         
-        // Получаем публичный URL
         const { data: urlData } = supabase.storage
           .from('media')
           .getPublicUrl(filePath);
         
-        console.log("✅ Файл загружен:", urlData.publicUrl);
         showUploadProgress(100, "Загрузка завершена!");
         
-        // Скрываем прогресс через секунду
         setTimeout(() => {
           hideUploadProgress();
         }, 1000);
@@ -361,7 +198,6 @@
       let photoUrl = null, videoUrl = null;
       
       try {
-        // Загружаем медиафайлы
         if (photoFile) {
           photoUrl = await uploadFile(photoFile);
           if (!photoUrl) return;
@@ -372,7 +208,6 @@
           if (!videoUrl) return;
         }
         
-        // Сохраняем пост в базу данных
         const { data, error } = await supabase
           .from('posts')
           .insert([{
@@ -389,12 +224,8 @@
         
         if (error) throw error;
         
-        console.log("✅ Пост опубликован:", data);
-        
-        // Очищаем форму
+        console.log("✅ Пост опубликован");
         resetForm();
-        
-        // Перезагружаем ленту
         await loadPosts();
         
       } catch (err) {
@@ -447,7 +278,6 @@
         
         if (error) throw error;
         
-        // Обновляем ленту
         await loadPosts();
       } catch (err) {
         console.error("❌ Ошибка лайка:", err);
@@ -464,10 +294,7 @@
       
       feed.innerHTML = posts.map(post => {
         const time = new Date(post.created_at).toLocaleString('ru-RU', {
-          day: 'numeric', 
-          month: 'short', 
-          hour: '2-digit', 
-          minute: '2-digit'
+          day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
         });
         
         const profile = getProfile();
@@ -478,12 +305,7 @@
           mediaHtml += `<img src="${post.photo_url}" alt="Фото" loading="lazy" style="max-width:100%; border-radius:8px;">`;
         }
         if (post.video_url) {
-          mediaHtml += `
-            <video controls style="max-width:100%; border-radius:8px;">
-              <source src="${post.video_url}" type="video/mp4">
-              Ваш браузер не поддерживает видео.
-            </video>
-          `;
+          mediaHtml += `<video controls style="max-width:100%; border-radius:8px;"><source src="${post.video_url}" type="video/mp4"></video>`;
         }
         
         return `
@@ -547,7 +369,6 @@
         updateUI(newProfile);
         modal.style.display = 'none';
         
-        // Если это первая настройка профиля, загружаем посты
         if (!isEditing) {
           loadPosts();
         }
@@ -558,7 +379,6 @@
     
     // ==================== ИНИЦИАЛИЗАЦИЯ ====================
     document.addEventListener('DOMContentLoaded', () => {
-      // Получаем элементы
       const photoInput = document.getElementById('photoInput');
       const videoInput = document.getElementById('videoInput');
       const photoPreviewContainer = document.getElementById('photoPreviewContainer');
@@ -569,11 +389,9 @@
       const postButton = document.getElementById('postButton');
       const settingsBtn = document.getElementById('settingsBtn');
       
-      // 📷 Обработка выбора фото
       photoInput.onchange = (e) => {
         const file = e.target.files[0];
         if (file && file.type.startsWith('image/')) {
-          // Проверяем размер (макс 5MB)
           if (file.size > 5 * 1024 * 1024) {
             alert('Фото слишком большое. Максимальный размер: 5MB');
             photoInput.value = '';
@@ -594,11 +412,9 @@
         }
       };
       
-      // 🎬 Обработка выбора видео
       videoInput.onchange = (e) => {
         const file = e.target.files[0];
         if (file && file.type.startsWith('video/')) {
-          // Проверяем размер (макс 50MB)
           if (file.size > 50 * 1024 * 1024) {
             alert('Видео слишком большое. Максимальный размер: 50MB');
             videoInput.value = '';
@@ -614,17 +430,14 @@
         }
       };
       
-      // Удаление фото
       removePhotoBtn.onclick = () => {
         photoFile = null;
         photoInput.value = '';
         photoPreviewContainer.style.display = 'none';
       };
       
-      // Публикация поста
       postButton.onclick = addPost;
       
-      // Публикация по Enter (но не Shift+Enter)
       postInput.onkeydown = (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault();
@@ -632,13 +445,10 @@
         }
       };
       
-      // Кнопка настроек
       settingsBtn.onclick = () => openProfileModal(true);
       
-      // Делаем функции глобальными
       window.toggleLike = toggleLike;
       
-      // Запуск приложения
       const profile = getProfile();
       if (!profile) {
         openProfileModal(false);
